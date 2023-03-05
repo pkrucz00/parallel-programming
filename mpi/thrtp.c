@@ -47,7 +47,7 @@ int* init_buf(int n){
   return buf;
 }
 
-float measure_bandwidth(int rank, int number_amount) {
+double measure_ping_pong_time(int rank, int number_amount) {
   
   int i;
   double t1, t2;
@@ -60,14 +60,13 @@ float measure_bandwidth(int rank, int number_amount) {
   } 
   t2 = MPI_Wtime();
 
-  int buff_size = sizeof(int)*number_amount;
-  double time = (t2 - t1)/((float) N);
-  
-  double thrtp = (double) (8*buff_size)/(1000000.0*time);
-
   free(number_buf);
-  
-  return thrtp;
+  return (t2 - t1)/((double) N);
+}
+
+double compute_thrtp(double time_in_sec, int number_amount) {
+  int buff_size = sizeof(int)*number_amount;
+  return (double) (8*buff_size)/(1000000.0*time_in_sec);
 }
 
 int main (int argc, char * argv[])
@@ -75,9 +74,12 @@ int main (int argc, char * argv[])
   int rank, size;
   init_mpi(&argc, &argv, &rank, &size);
  
-  int number_amount = 1000000;
-  double thrtp = measure_bandwidth(rank, number_amount);
-  if (rank == 0) printf("Throughtput: %f [Mbit/s]\n", thrtp);
+  const int number_amount = 1000000;
+  double snd_rcv_time_sec = measure_ping_pong_time(rank, number_amount);
+  double thrtp = compute_thrtp(snd_rcv_time_sec, number_amount); 
+  double delay = 1000.0 * measure_ping_pong_time(rank, 1);  
+
+  if (rank == 0) printf("Thrtp: %f [Mbit/s]\nDelay: %f[ms]\n", thrtp, delay);
 
   MPI_Finalize();
   return 0;
