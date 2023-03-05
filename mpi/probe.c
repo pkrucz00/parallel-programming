@@ -9,8 +9,6 @@ int main (int argc, char * argv[])
 {
   int rank, size;
 
-  int token;
-
   MPI_Init (&argc, &argv);  /* starts MPI */
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);  /* get current process id */
   MPI_Comm_size (MPI_COMM_WORLD, &size);  /* get number of processes */
@@ -34,7 +32,7 @@ int main (int argc, char * argv[])
 	int* number_buf = (int*) malloc(sizeof(int) * number_amount);
 
 	MPI_Recv(number_buf, number_amount, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	printf("Process no 1 received %d numbers\n", token);  
+	printf("Process no 1 received %d numbers\n", number_amount);  
   	
 	free(number_buf);
   }
