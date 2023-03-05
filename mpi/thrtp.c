@@ -5,6 +5,8 @@
 
 #define N 1001
 #define DEFAULT_TAG 0
+#define TEST_CASES_NUM 6
+#define CSV_NAME "results/normal_1_node.csv"
 
 void init_mpi(int* argc, char** argv[], int* rank, int* size){
    MPI_Init (argc, argv);  /* starts MPI */
@@ -14,18 +16,11 @@ void init_mpi(int* argc, char** argv[], int* rank, int* size){
 
 void my_MPI_send(int* number_buf, int number_amount, int receiver) {
   MPI_Send(number_buf, number_amount, MPI_INT, receiver, DEFAULT_TAG, MPI_COMM_WORLD);
-//	printf("Sent %d numbers to %d\n", number_amount, receiver);
 }
 
 
 void my_MPI_receive(int* number_buf, int number_amount, int sender){
   MPI_Recv(number_buf, number_amount, MPI_INT, sender, DEFAULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-  // int i;
-  // printf("From %d with love :*\n", sender); 
-  //      for (i = 0; i < number_amount; i++) {
-  //		printf("%d\n", number_buf[i]);
-  //	}
-
 }
 
 void MPI_one_ping_pong(int rank, int* number_buf, int number_amount) {
@@ -69,18 +64,40 @@ double compute_thrtp(double time_in_sec, int number_amount) {
   return (double) (8*buff_size)/(1000000.0*time_in_sec);
 }
 
+void export_to_csv(int* buff_size, double* throughtputs) {
+  printf("Message_size, Throughtput\n");
+  
+  int i;
+  for (i = 0; i < TEST_CASES_NUM; i++) {
+  	printf( "%d, %f\n", buff_size[i], throughtputs[i]);
+  }
+}
+
 int main (int argc, char * argv[])
 {
   int rank, size;
   init_mpi(&argc, &argv, &rank, &size);
  
-  const int number_amount = 1000000;
-  double snd_rcv_time_sec = measure_ping_pong_time(rank, number_amount);
-  double thrtp = compute_thrtp(snd_rcv_time_sec, number_amount); 
+  const int number_amounts[TEST_CASES_NUM] = {100, 1000, 10000, 100000,  1000000, 10000000 };
+  double* thrtps = (double*) malloc(sizeof(double)*TEST_CASES_NUM);
+  int* buff_size = (int*) malloc(sizeof(int)*TEST_CASES_NUM);
+  int i;  
+  for (i = 0; i < TEST_CASES_NUM; i++) {
+  	double snd_rcv_time_sec = measure_ping_pong_time(rank, number_amounts[i]);
+  	buff_size[i] = sizeof(int)*number_amounts[i];
+        thrtps[i] = compute_thrtp(snd_rcv_time_sec, number_amounts[i]); 
+  } 
   double delay = 1000.0 * measure_ping_pong_time(rank, 1);  
 
-  if (rank == 0) printf("Thrtp: %f [Mbit/s]\nDelay: %f[ms]\n", thrtp, delay);
+  if (rank == 0) {
+  	export_to_csv(buff_size, thrtps);
+        printf("Delay: %f[ms]\n", delay);
+  	
+  }
+  free(thrtps);
+  free(buff_size);
 
   MPI_Finalize();
+
   return 0;
 }
