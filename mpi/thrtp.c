@@ -7,6 +7,7 @@
 #define DEFAULT_TAG 0
 #define TEST_CASES_NUM 6
 #define CSV_NAME "results/normal_1_node.csv"
+#define BUFFERED 0
 
 void init_mpi(int* argc, char** argv[], int* rank, int* size){
    MPI_Init (argc, argv);  /* starts MPI */
@@ -15,7 +16,19 @@ void init_mpi(int* argc, char** argv[], int* rank, int* size){
 }
 
 void my_MPI_send(int* number_buf, int number_amount, int receiver) {
+  # ifdef BUFFERED
+        int buffer_attached_size = MPI_BSEND_OVERHEAD +  number_amount*sizeof(int);
+        char* buffer_attached = (char*) malloc(buffer_attached_size);
+        MPI_Buffer_attach(buffer_attached, buffer_attached_size);
+
+        MPI_Bsend(number_buf, number_amount, MPI_INT, receiver, DEFAULT_TAG, MPI_COMM_WORLD);
+        
+        MPI_Buffer_detach(&buffer_attached, &buffer_attached_size);
+        free(buffer_attached); 
+  # else
   MPI_Send(number_buf, number_amount, MPI_INT, receiver, DEFAULT_TAG, MPI_COMM_WORLD);
+  # endif /* BUFFERED */
+
 }
 
 
@@ -78,7 +91,7 @@ int main (int argc, char * argv[])
   int rank, size;
   init_mpi(&argc, &argv, &rank, &size);
  
-  const int number_amounts[TEST_CASES_NUM] = {100, 1000, 10000, 100000,  1000000, 10000000 };
+  const int number_amounts[TEST_CASES_NUM] = {100, 1000, 10000, 100000,  1000000, 10000000};
   double* thrtps = (double*) malloc(sizeof(double)*TEST_CASES_NUM);
   int* buff_size = (int*) malloc(sizeof(int)*TEST_CASES_NUM);
   int i;  
