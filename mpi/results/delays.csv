@@ -1,5 +1,5 @@
 Type, Number_of_nodes, Delay
-normal, 1, 0.066799
+normal, 1, 0.000666 
 normal, 2, 0.147370
-buffered, 1, 0.066297
+buffered, 1, 0.000974
 buffered, 2, 0.076020
