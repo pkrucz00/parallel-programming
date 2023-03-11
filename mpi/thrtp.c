@@ -3,11 +3,11 @@
 #include <time.h>
 #include <mpi.h>
 
-#define N 1001
+#define N 100
 #define DEFAULT_TAG 0
-#define TEST_CASES_NUM 12
+#define TEST_CASES_NUM 19
 #define CSV_NAME "results/normal_1_node.csv"
-#define BUFFERED 1
+// #define BUFFERED 1
 
 void init_mpi(int* argc, char** argv[], int* rank, int* size){
    MPI_Init (argc, argv);  /* starts MPI */
@@ -91,7 +91,7 @@ int main (int argc, char * argv[])
   int rank, size;
   init_mpi(&argc, &argv, &rank, &size);
  
-  const int number_amounts[TEST_CASES_NUM] = {100, 250, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000};
+  const int number_amounts[TEST_CASES_NUM] = {10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000};
   double* thrtps = (double*) malloc(sizeof(double)*TEST_CASES_NUM);
   int* buff_size = (int*) malloc(sizeof(int)*TEST_CASES_NUM);
   int i;  
