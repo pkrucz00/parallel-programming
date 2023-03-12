@@ -2,8 +2,9 @@
 #include <stdlib.h>
 #include <mpi.h>
 #include <time.h>
+#include <math.h>
 
-#define N 1000
+#define N 1000000000
 
 typedef struct Point {
   float x;
@@ -26,11 +27,11 @@ int point_in_circle() {
 
 float approx_pi(){
   long long i;
-  int sum = 0;
+  long long sum = 0;
   for ( i = 0; i < N; i++){
        sum += point_in_circle();
   }
-  float proportion = (float) sum / (float) N;
+  double proportion = (double) sum / (double) N;
   return 4*proportion;
 }
 
@@ -40,10 +41,10 @@ int main (int argc, char * argv[])
   init_mpi(&argc, &argv, &rank, &size);
 
   srand(time(NULL) + rank);
-  float pi = approx_pi();
-
+  double pi = approx_pi();
+  double diff = fabs(pi - M_PI);
    if (rank == 0) {
-  	printf("Pi approximation: %f\n", pi);
+  	printf("Pi approximation: %f\nDifference from correct: %f\n", pi, diff);
    }
   MPI_Finalize();
 
