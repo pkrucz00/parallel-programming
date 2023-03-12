@@ -2,12 +2,20 @@
 #include <stdlib.h>
 #include <time.h>
 #include <mpi.h>
+#include <math.h>
 
 #define N 100
 #define DEFAULT_TAG 0
 #define TEST_CASES_NUM 19
 #define CSV_NAME "results/normal_1_node.csv"
 // #define BUFFERED 1
+
+struct stats {
+   double average;
+   double st_d;
+};
+
+typedef struct stats Stats;
 
 void init_mpi(int* argc, char** argv[], int* rank, int* size){
    MPI_Init (argc, argv);  /* starts MPI */
@@ -55,21 +63,51 @@ int* init_buf(int n){
   return buf;
 }
 
-double measure_ping_pong_time(int rank, int number_amount) {
+double* init_double_table(int n){
+   return (double*) malloc(sizeof(double) * n);
+}
+
+double avg(double* nums, int n){
+   int i;
+   double sum = 0;
+   for (i = 0; i < n; i++){
+       sum += nums[i];
+   }
+   return sum / (double) n;
+}
+
+double std(double* nums, double mean, int n){
+   double result = 0;
+   int i;
+   for (i = 0; i < n; i++){
+      result += (nums[i] - mean)*(nums[i] - mean);
+   }   
+
+   return (double) sqrt(result / (double) n);  
+}
+
+Stats measure_ping_pong_time(int rank, int number_amount) {
   
   int i;
   double t1, t2;
   int* number_buf = init_buf(number_amount);
+  double* times = init_double_table(N);
+  Stats result;
 
   MPI_Barrier(MPI_COMM_WORLD);
-  t1 = MPI_Wtime();
+  
   for (i = 0; i < N; i++){
+     t1 = MPI_Wtime();
      MPI_one_ping_pong(rank, number_buf, number_amount);    
+     t2 = MPI_Wtime();
+     times[i] = t2 - t1;
   } 
-  t2 = MPI_Wtime();
-
+  result.average = avg(times, N);
+  result.st_d = std(times, result.average, N);
+ 
   free(number_buf);
-  return (t2 - t1)/((double) N);
+  free(times);
+  return result;
 }
 
 double compute_thrtp(double time_in_sec, int number_amount) {
@@ -77,12 +115,12 @@ double compute_thrtp(double time_in_sec, int number_amount) {
   return (double) (8*buff_size)/(1000000.0*time_in_sec);
 }
 
-void export_to_csv(int* buff_size, double* throughtputs) {
-  printf("Message_size, Throughtput\n");
+void export_to_csv(int* buff_size, double* throughtputs, double* stds) {
+  printf("Message_size, Throughtput, Standard deviation\n");
   
   int i;
   for (i = 0; i < TEST_CASES_NUM; i++) {
-  	printf( "%d, %f\n", buff_size[i], throughtputs[i]);
+	printf( "%d, %f, %f\n", buff_size[i], throughtputs[i], stds[i]);
   }
 }
 
@@ -92,22 +130,27 @@ int main (int argc, char * argv[])
   init_mpi(&argc, &argv, &rank, &size);
  
   const int number_amounts[TEST_CASES_NUM] = {10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000};
+  Stats thr_stats;
   double* thrtps = (double*) malloc(sizeof(double)*TEST_CASES_NUM);
+  double* stds = (double*) malloc(sizeof(double)*TEST_CASES_NUM);
+
   int* buff_size = (int*) malloc(sizeof(int)*TEST_CASES_NUM);
   int i;  
    for (i = 0; i < TEST_CASES_NUM; i++) {
- 	double snd_rcv_time_sec = measure_ping_pong_time(rank, number_amounts[i]);
+ 	thr_stats = measure_ping_pong_time(rank, number_amounts[i]);
   	buff_size[i] = sizeof(int)*number_amounts[i];
-        thrtps[i] = compute_thrtp(snd_rcv_time_sec, number_amounts[i]); 
+        thrtps[i] = compute_thrtp(thr_stats.average, number_amounts[i]); 
+        stds[i] = thr_stats.st_d;
   } 
   // double delay = 1000.0 * measure_ping_pong_time(rank, 1);  
 
   if (rank == 0) {
-  	export_to_csv(buff_size, thrtps);
+  	export_to_csv(buff_size, thrtps, stds);
        //  printf("%f\n", delay);
   	
   }
   free(thrtps);
+  free(stds);
   free(buff_size);
 
   MPI_Finalize();
