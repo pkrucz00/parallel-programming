@@ -8,7 +8,7 @@
 #define DEFAULT_TAG 0
 #define TEST_CASES_NUM 19
 #define CSV_NAME "results/normal_1_node.csv"
-// #define BUFFERED 1
+#define BUFFERED 1
 
 void init_mpi(int* argc, char** argv[], int* rank, int* size){
    MPI_Init (argc, argv);  /* starts MPI */
