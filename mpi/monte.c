@@ -39,10 +39,12 @@ int main (int argc, char * argv[])
   int rank, size;
   init_mpi(&argc, &argv, &rank, &size);
 
-  srand(time(NULL));
+  srand(time(NULL) + rank);
   float pi = approx_pi();
 
-  printf("Pi approximation: %f\n", pi);
+   if (rank == 0) {
+  	printf("Pi approximation: %f\n", pi);
+   }
   MPI_Finalize();
 
   return 0;
