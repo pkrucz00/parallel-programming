@@ -4,7 +4,7 @@
 #include <time.h>
 #include <math.h>
 
-#define N 1000000000
+#define N 100000
 
 typedef struct Point {
   float x;
@@ -25,12 +25,16 @@ int point_in_circle() {
   return (p.x*p.x + p.y*p.y) < 1;  
 }
 
-float approx_pi(){
+long long draw_points_in_circle(long long n) {
   long long i;
   long long sum = 0;
-  for ( i = 0; i < N; i++){
+  for ( i = 0; i < n; i++){
        sum += point_in_circle();
   }
+   return sum;
+}
+
+float approx_pi(long long sum){
   double proportion = (double) sum / (double) N;
   return 4*proportion;
 }
@@ -38,14 +42,29 @@ float approx_pi(){
 int main (int argc, char * argv[])
 {
   int rank, size;
+  
   init_mpi(&argc, &argv, &rank, &size);
+  double t1 = MPI_Wtime();
 
   srand(time(NULL) + rank);
-  double pi = approx_pi();
-  double diff = fabs(pi - M_PI);
-   if (rank == 0) {
-  	printf("Pi approximation: %f\nDifference from correct: %f\n", pi, diff);
-   }
+ 
+  long long n_per_process = N / size;
+  long long total_points = n_per_process * size;
+  
+  // MPI_Barrier(MPI_COMM_WORLD);
+  
+  long long local_sum = draw_points_in_circle(n_per_process);
+
+  long long global_sum;
+  MPI_Reduce(&local_sum, &global_sum, 1, MPI_LONG_LONG_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+  double t2 = MPI_Wtime();
+  double total_time = t2 - t1;
+
+  if (rank == 0){
+  	double pi = approx_pi(global_sum);
+  	double diff = fabs(pi - M_PI);
+  	printf("Pi approximation: %f\nDifference from correct: %f\nTotal points: %lld\nTotal time: %f\n", pi, diff, total_points, total_time);
+  }
   MPI_Finalize();
 
   return 0;
