@@ -4,7 +4,9 @@
 #include <time.h>
 #include <math.h>
 
-#define N 100000
+#define N 100000000
+#define SCALING "strong"
+#define TEST_CASE_NUM 0
 
 typedef struct Point {
   float x;
@@ -44,15 +46,14 @@ int main (int argc, char * argv[])
   int rank, size;
   
   init_mpi(&argc, &argv, &rank, &size);
-  double t1 = MPI_Wtime();
 
   srand(time(NULL) + rank);
- 
+   
   long long n_per_process = N / size;
-  long long total_points = n_per_process * size;
   
-  // MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Barrier(MPI_COMM_WORLD);
   
+  double t1 = MPI_Wtime();
   long long local_sum = draw_points_in_circle(n_per_process);
 
   long long global_sum;
@@ -62,8 +63,7 @@ int main (int argc, char * argv[])
 
   if (rank == 0){
   	double pi = approx_pi(global_sum);
-  	double diff = fabs(pi - M_PI);
-  	printf("Pi approximation: %f\nDifference from correct: %f\nTotal points: %lld\nTotal time: %f\n", pi, diff, total_points, total_time);
+  	printf("%f,%f,%d,%s,%d\n", pi, total_time, N, SCALING, TEST_CASE_NUM);
   }
   MPI_Finalize();
 
