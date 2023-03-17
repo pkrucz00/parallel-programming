@@ -4,10 +4,15 @@
 #include <time.h>
 #include <math.h>
 
+#ifndef N
 #define N 100000000
-#define SCALING "weak"
-#define TEST_CASE_NUM 0
+#endif /*N*/
 
+#define SCALING "weak"
+
+#ifndef TEST_CASE_NUM
+#define TEST_CASE_NUM 0
+#endif /*TEST_CASE_NUM*/
 typedef struct Point {
   float x;
   float y;
