@@ -69,7 +69,7 @@ int main (int argc, char * argv[])
 
   if (rank == 0){
   	double pi = approx_pi(global_sum);
-  	printf("%f,%f,%d,%s,%d\n", pi, total_time, N, SCALING, TEST_CASE_NUM);
+  	printf("%f,%f,%d,%d,%s,%d\n", pi, total_time, size, N, SCALING, TEST_CASE_NUM);
   }
   MPI_Finalize();
 

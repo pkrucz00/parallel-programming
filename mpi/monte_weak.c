@@ -41,8 +41,8 @@ long long draw_points_in_circle(long long n) {
    return sum;
 }
 
-float approx_pi(long long sum){
-  double proportion = (double) sum / (double) N;
+float approx_pi(long long sum, int processes_num){
+  double proportion = (double) sum / (double) (N*processes_num);
   return 4*proportion;
 }
 
@@ -67,8 +67,8 @@ int main (int argc, char * argv[])
   double total_time = t2 - t1;
 
   if (rank == 0){
-  	double pi = approx_pi(global_sum);
-  	printf("%f,%f,%d,%s,%d\n", pi, total_time, N, SCALING, TEST_CASE_NUM);
+  	double pi = approx_pi(global_sum, size);
+  	printf("%f,%f,%d,%d,%s,%d\n", pi, total_time, size, N, SCALING, TEST_CASE_NUM);
   }
   MPI_Finalize();
 
