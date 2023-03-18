@@ -14,14 +14,13 @@ function mpi_run() {
 }
 
 echo "PI,TIME,PROC_NUM,N,SCALING,TEST_CASE_NUM"
-for N in 1000 10000 100000
+for N in 1410065408
 do
-	for proc_num in {1..2}
+	for proc_num in 1
 	do 
-		for test_case_num in {1..5}
+		for test_case_num in {1..10}
 		do
 			mpi_run monte $proc_num -DN=$N -DTEST_CASE_NUM=$test_case_num
-			mpi_run monte_weak $proc_num -DN=$N -DTEST_CASE_NUM=$test_case_num
 		done
 	done
 done
