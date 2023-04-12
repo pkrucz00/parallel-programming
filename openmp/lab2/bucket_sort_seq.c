@@ -69,16 +69,22 @@ int main() {
 		qsort(buckets[i], bucket_ind[i], sizeof(int), asc);
 	}
 
-	
-
 	int j;
-	for (i = 0; i < B; i++) {
-		printf("Bucket %d:  ", i);
-		for (j = 0; j < bucket_ind[i]; j++) {
-			printf("%f, ", buckets[i][j]);
+	i = 0;
+	int bucket_num = 0;
+	while (i < N) {
+		printf("%d %d\n", bucket_num, bucket_ind[bucket_num]);
+		for (j = 0; j < bucket_ind[bucket_num]; j++) {
+			arr[i] = buckets[bucket_num][j];
+			i++;;
 		}
-		printf("\n"); 
+		bucket_num++;
+	}  
+
+	for (i = 0; i < N; i++) {
+		printf("%f,  ", arr[i]);
 	} 
+	printf("\n");
 	double t2 = omp_get_wtime();
  	 printf("%f,%lld\n", t2 - t1, size_of_arr);
 	
