@@ -4,11 +4,11 @@
 #include <time.h>
 
 #ifndef N
-#define N 150
+#define N 150000
 #endif /*N*/
 
 #ifndef B
-#define B 50
+#define B 500
 #endif /*B*/
 
 #ifndef P
@@ -46,10 +46,10 @@ void free_2d_array(float** arr, long long m) {
 }
 
 int* init_ints(int n) {	
-	int* result = init_int_array(B);
+	int* result = init_int_array(n);
 	
 	int i;
-	for (i = 0; i < B; i++) {
+	for (i = 0; i < n; i++) {
 		result[i] = 0;
 	}
 	return result;
@@ -61,41 +61,56 @@ int asc(const void * a, const void * b) {
 	return (va > vb) - (va < vb);
 }
 
-void fill_array_rand(float* arr, int n) {
+void fill_array_rand(float* arr, int n, int tid) {
 	int i;
 	unsigned short xi[3];
-	unsigned short tid;
 	time_t sec = time(NULL);	
 
-	#pragma omp parallel private(tid, xi)
-	{
-		tid = omp_get_thread_num();
-		xi[0] = tid + sec;
-		xi[1] = tid + 2 + sec;
-		xi[2] = tid + 1 + sec;
+	tid = omp_get_thread_num();
+	xi[0] = tid + sec;
+	xi[1] = tid + 2 + sec;
+	xi[2] = tid + 1 + sec;
 
-		#pragma omp for private(i) schedule(guided)
-		for (i = 0; i < n; i++){
-			arr[i] = erand48(xi);
-		}
+	#pragma omp for private(i) schedule(guided)
+	for (i = 0; i < n; i++){
+		arr[i] = erand48(xi);
 	}
 }
 
-void distribute_to_buckets(float* arr, float** buckets, int* bucket_ind, int n, int b){
-	int i;
-	// int i0 =  thr_num * ((float)n / (float)P);
-	int number_of_bucket;
-	int number_of_elements_in_bucket;
-	int i0 = 7;
-	i = i0;
-	do {
-		number_of_bucket = (int) b*arr[i];
-		number_of_elements_in_bucket = bucket_ind[number_of_bucket];
-		buckets[number_of_bucket][number_of_elements_in_bucket] = arr[i];
-		bucket_ind[number_of_bucket]++;
+void add_to_bucket(float** buckets, int* bucket_ind, float val, int b){	
+	//printf("%d\n", __LINE__);
+        int number_of_bucket = (int) b*val;
+	//printf("%d\n", __LINE__);
+	int number_of_elements_in_bucket = bucket_ind[number_of_bucket];
+	if (number_of_elements_in_bucket > N){
+		printf("WTF: %d\n", number_of_elements_in_bucket);
+	}  //TODO sprawdzic, co jest nie tak
+	//printf("%d\n", __LINE__);
+//	printf("%d %d\n", number_of_bucket, number_of_elements_in_bucket);
+	buckets[number_of_bucket][number_of_elements_in_bucket] = val;	
+//	printf("%d\n", __LINE__);
+	bucket_ind[number_of_bucket]++;
+	printf("%d\n", bucket_ind[number_of_bucket]);
+//	printf("%d\n", __LINE__);
+}
 
-		i = (i + 1) % n;
-	} while (i != i0);
+void distribute_to_buckets(float* arr, float** buckets, int* bucket_ind, int n, int b, int thr){
+	int i;
+	float val;
+	float min_val = (float) thr / (float) P;
+	float max_val = (float) (thr + 1) / (float) P; 
+	int offset = (int) (thr * ((float) n / (float) P));
+	int ind;
+//	printf("%f %f %d\n", min_val, max_val, offset);
+	for (i = 0; i < n; i++) {
+		ind = (i + offset) % n;
+		val = arr[ind];
+		
+//		printf("%d %f\n", ind, val);
+		if ( min_val <= val && val < max_val){ 
+			add_to_bucket(buckets, bucket_ind, val, b);
+		}	
+	} 
 }
 
 void sort_buckets(float** buckets, int* bucket_ind, int b) {
@@ -152,24 +167,30 @@ int main() {
 	float** buckets = init_2d_array(B, N);
 	int* bucket_ind = init_ints(B);
 	
+	int thr;
+	thr = 0;  //TODO change it later
 	long long size_of_arr = N * sizeof(float);
 
 	double t1 = omp_get_wtime();
-	// TODO Figure out how to pragma mp this one
-	//
-	// first sectiion
-	fill_array_rand(arr, N);
-	//TODO change input parameters 
-	distribute_to_buckets(arr, buckets, bucket_ind, N, B);
+	//#pragma omp parallel private (thr)
+	//{
+	printf("%d\n", __LINE__);
+	thr = omp_get_thread_num();
+	printf("%d\n", __LINE__);
+	fill_array_rand(arr, N, thr);
+	printf("%d\n", __LINE__);
+	distribute_to_buckets(arr, buckets, bucket_ind, N, B, thr);
+	printf("%d\n", __LINE__);
 	sort_buckets(buckets, bucket_ind, B);  
+	//}
 	// end first section
 	int* cum_buck_ind = compute_cummulative_sum(bucket_ind, B);
-	print_int_arr(cum_buck_ind, B);
+//	print_int_arr(bucket_ind, B);
 	// start second section
 	merge_buckets(arr, buckets, bucket_ind, N);
 	// sen second section
 	double t2 = omp_get_wtime();
-	print_float_arr(arr, N);
+//	print_float_arr(arr, N);
  	 printf("%f,%lld\n", t2 - t1, size_of_arr);
 	
 	free(arr);
