@@ -184,6 +184,15 @@ char* print_is_sorted(int sorted){
 	return sorted ? "true" : "false";
 }
 
+double avg(double* arr, int n){
+	int i;
+	double sum = 0;
+	for (i = 0; i < n; i++){
+		sum += arr[i];
+	}
+	return sum / (float) n; 
+}
+
 int main() {
 	omp_set_num_threads(P);
 
@@ -191,12 +200,16 @@ int main() {
 	float** buckets = init_2d_array(B, 5*(N/B));
 	int* bucket_ind = init_ints(B);
 
-	double t1 = omp_get_wtime();
+	double* t_a_arr = malloc(P*sizeof(double));
+	double* t_b_arr = malloc(P*sizeof(double));
+	double* t_c_arr = malloc(P*sizeof(double));
 	
+	double t_start = omp_get_wtime();	
 	#pragma omp parallel
 	{
 	int thr = omp_get_thread_num();
 	fill_array_rand(arr, N, thr);
+	t_a_arr[thr] = omp_get_wtime(); 
 
 	int offset = compute_offset(thr, N);
 	int buck_start_ind = compute_buck_start_ind(thr); 
@@ -204,9 +217,10 @@ int main() {
 	float min_val = compute_min_val(buck_start_ind);
 	float max_val = compute_max_val(buck_end_ind);
 	distribute_to_buckets(arr, buckets, bucket_ind, min_val, max_val, offset);
-	
-	sort_buckets(buckets, bucket_ind, buck_start_ind, buck_end_ind);  
+	t_b_arr[thr] = omp_get_wtime();	
 
+	sort_buckets(buckets, bucket_ind, buck_start_ind, buck_end_ind);  
+	t_c_arr[thr] = omp_get_wtime();
 	}
 
 	int* cum_buck_ind = compute_cummulative_sum(bucket_ind, B);
@@ -221,15 +235,23 @@ int main() {
 	merge_buckets(arr, buckets, bucket_ind, buck_start_ind, merge_start_ind, merge_end_ind);
 	
 	}
-	double t2 = omp_get_wtime();
-
+	double t_end = omp_get_wtime();
 	
 	int sorted = is_sorted(arr, N);
-	printf("%f,%d, %s\n", t2 - t1, N, print_is_sorted(sorted));
+
+	double t_a_delta = avg(t_a_arr, P) - t_start;
+	double t_b_delta = avg(t_b_arr, P) - avg(t_a_arr, P);
+	double t_c_delta = avg(t_c_arr, P) - avg(t_b_arr, P);
+	double t_d_delta = t_end - avg(t_c_arr, P); 
+	double t_all = t_end - t_start;
+	printf("%d,%d,%d,%f,%f,%f,%f,%f, %s\n", N, B, P, t_a_delta, t_b_delta, t_c_delta, t_d_delta, t_all, print_is_sorted(sorted));
 
 	free(arr);
 	free(bucket_ind);
 	free(cum_buck_ind);
 	free_2d_array(buckets, B);
+	free(t_a_arr);
+	free(t_b_arr);
+	free(t_c_arr);
 	return 0;
 }
