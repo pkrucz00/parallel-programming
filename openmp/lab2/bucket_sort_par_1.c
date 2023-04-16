@@ -4,41 +4,41 @@
 #include <time.h>
 
 #ifndef N
-#define N 41370 
+#define N 20 
 #endif /*N*/
 
 #ifndef B
-#define B 1000
+#define B 4
 #endif /*B*/
 
 #ifndef P
-#define P 1
+#define P 3
 #endif /*P*/
 
-long* init_int_array(long long n){
-	return (long*) malloc(n * sizeof(long));
+int* init_int_array(int n){
+	return (int*) malloc(n * sizeof(int));
 }
 
-float* init_array(long long n) {
+float* init_array(int n) {
 	float* result = (float*) malloc(n * sizeof(float));
-	long i;
+	int i;
 	for (i = 0; i < n; i++){
 		result[i] = 0;
 	}
 	return result;
 }
 
-float** init_2d_array(long long m, long long n) {
+float** init_2d_array(int m, int n) {
 	float** result = (float**) malloc(n * sizeof(float*));
-	long i;
+	int i;
 	for (i = 0; i < n; i++){
 		result[i] = (float*) malloc(m * sizeof(float));
 	}
 	return result;
 }
 
-void free_2d_array(float** arr, long n) {
-	long i;
+void free_2d_array(float** arr, int n) {
+	int i;
 	for (i = 0; i < n; i++){
 		// For some reason this `free` does not work properly... 
 		// If I will have some time I will fix that
@@ -47,10 +47,10 @@ void free_2d_array(float** arr, long n) {
 	free(arr);
 }
 
-long* init_ints(long n) {	
-	long* result = (long*) malloc(n*sizeof(long));
+int* init_ints(int n) {	
+	int* result = (int*) malloc(n*sizeof(int));
 	
-	long i;
+	int i;
 	for (i = 0; i < n; i++) {
 		result[i] = 0;
 	}
@@ -63,8 +63,8 @@ int asc(const void * a, const void * b) {
 	return (va > vb) - (va < vb);
 }
 
-void fill_array_rand(float* arr, long n, int tid) {
-	long i;
+void fill_array_rand(float* arr, int n, int tid) {
+	int i;
 	unsigned short xi[3];
 	time_t sec = time(NULL);	
 
@@ -79,42 +79,62 @@ void fill_array_rand(float* arr, long n, int tid) {
 	}
 }
 
-void add_to_bucket(float** buckets, long* bucket_ind, float val, long b){	
-        long number_of_bucket = (long) b*val;
-	long number_of_elements_in_bucket = bucket_ind[number_of_bucket];
+void add_to_bucket(float** buckets, int* bucket_ind, float val, int b){	
+        int number_of_bucket = (int) b*val;
+	int number_of_elements_in_bucket = bucket_ind[number_of_bucket];
 	buckets[number_of_bucket][number_of_elements_in_bucket] = val;	
 	bucket_ind[number_of_bucket]++;
 }
 
-void distribute_to_buckets(float* arr, float** buckets, long* bucket_ind, long n, long b, int thr){
-	long i;
+
+int compute_offset(int thr, int n){
+	return  (thr * ((float) n / (float) P));
+}
+
+int compute_buck_start_ind(int thr){
+	float step = (float) B / (float) P;
+	int result = (int) ((float) thr * step);
+	return result;
+} 
+
+int compute_buck_end_ind(int thr){
+	if (thr == P - 1) return B-1;
+	
+	return compute_buck_start_ind(thr + 1) - 1;
+}
+
+float compute_min_val(int buck_start_ind){
+	return  (float) buck_start_ind / (float) B; 
+}
+
+float compute_max_val(int buck_end_ind){
+	return buck_end_ind != B ? (float) (buck_end_ind + 1) / (float) B : 1.0;
+}
+void distribute_to_buckets(float* arr, float** buckets, int* bucket_ind, float min_val, float max_val, int offset){
+	int i;
 	float val;
-	float min_val = (float) thr / (float) P;
-	float max_val = (float) (thr + 1) / (float) P; 
-	long offset = (long) (thr * ((float) n / (float) P));
-	long ind;
-	for (i = 0; i < n; i++) {
-		ind = (i + offset) % n;
+	int ind;
+	for (i = 0; i < N; i++) {
+		ind = (i + offset) % N;
 		val = arr[ind];
 		
 		if ( min_val <= val && val < max_val){ 
-			add_to_bucket(buckets, bucket_ind, val, b);
+			add_to_bucket(buckets, bucket_ind, val, B);
 		}	
 	} 
 }
 
-void sort_buckets(float** buckets, long* bucket_ind, long b) {
-	long i;
-	for (i = 0; i < b; i++){
-		qsort(buckets[i], bucket_ind[i], sizeof(long), asc);
+void sort_buckets(float** buckets, int* bucket_ind, int start_ind, int end_ind) {
+	int i;
+	for (i = start_ind; i <= end_ind; i++){
+		qsort(buckets[i], bucket_ind[i], sizeof(int), asc);
 	}
 }
 
-// TODO make from and to
-void merge_buckets(float* arr, float** buckets, long* bucket_ind, long cum_buck_ind,  long n, int from, int to){	
-	long j;
-	long bucket_num = 0;
-	long i = from;
+void merge_buckets(float* arr, float** buckets, int* bucket_ind, int bucket_start_ind, int from, int to){	
+	int j;
+	int bucket_num = bucket_start_ind;
+	int i = from;
 	while (i < to) {
 		for (j = 0; j < bucket_ind[bucket_num]; j++) {
 			arr[i] = buckets[bucket_num][j];
@@ -124,9 +144,9 @@ void merge_buckets(float* arr, float** buckets, long* bucket_ind, long cum_buck_
 	}	
 }
 
-long* compute_cummulative_sum(long* arr, long n){
-	long* cum_arr = init_ints(n);
-	long i;
+int* compute_cummulative_sum(int* arr, int n){
+	int* cum_arr = init_ints(n);
+	int i;
 	cum_arr[0] = arr[0];
 	for (i = 1; i < n; i++){
 		cum_arr[i] = cum_arr[i-1] + arr[i];
@@ -134,21 +154,37 @@ long* compute_cummulative_sum(long* arr, long n){
 	return cum_arr;
 }
  
-void print_int_arr(long* arr, long n) {
-	long i;
+void print_int_arr(int* arr, int n) {
+	int i;
 	for (i = 0; i < n; i++) {
-		printf("%ld, ", arr[i]);
+		printf("%d, ", arr[i]);
 	}
 	printf("\n");
 }
 
 
-void print_float_arr(float* arr, long n){
-	long i;
+void print_float_arr(float* arr, int n){
+	int i;
 	for (i = 0; i < n; i++) {
 		printf("%4f, ", arr[i]);
 	} 
 	printf("\n");
+}
+
+void print_is_sorted(float* arr, int n){
+	int i;
+	int sorted = 1;
+	
+	for (i = 1; i < n; i++){
+		if (arr[i-1] > arr[i]){
+			sorted = 0;
+		}
+	} 
+	if (sorted == 1){
+		printf("Sorted!\n");
+	} else {
+		printf("Not sorted :c \n");
+	}
 }
 
 int main() {
@@ -156,26 +192,48 @@ int main() {
 
 	float* arr = init_array(N);
 	float** buckets = init_2d_array(B, N);
-	long* bucket_ind = init_ints(B);
+	int* bucket_ind = init_ints(B);
 	
-	int thr;
-	thr = 0;  //TODO change it later
-	long long size_of_arr = N * sizeof(float);
+	int size_of_arr = N * sizeof(float);
 
 	double t1 = omp_get_wtime();
-	//#pragma omp parallel private (thr)
-	//{
-	thr = omp_get_thread_num();
+	
+	printf("min_val, max_val, offset, buck_start_ind, buck_end_ind\n");
+	#pragma omp parallel
+	{
+	int thr = omp_get_thread_num();
+	int offset = compute_offset(thr, N);
+	int buck_start_ind = compute_buck_start_ind(thr); 
+	int buck_end_ind = compute_buck_end_ind(thr);
+
+	float min_val = compute_min_val(buck_start_ind);
+	float max_val = compute_max_val(buck_end_ind);
+	
+	printf("thr %d: %f %f %d %d %d\n", thr, min_val, max_val, offset, buck_start_ind, buck_end_ind); 
+
 	fill_array_rand(arr, N, thr);
-	distribute_to_buckets(arr, buckets, bucket_ind, N, B, thr);
-	sort_buckets(buckets, bucket_ind, B);  
-	//}
-	long* cum_buck_ind = compute_cummulative_sum(bucket_ind, B);
-	// start second section
-	merge_buckets(arr, buckets, bucket_ind, N);
-	// sen second section
+	distribute_to_buckets(arr, buckets, bucket_ind, min_val, max_val, offset);
+	sort_buckets(buckets, bucket_ind, buck_start_ind, buck_end_ind);  
+	}
+
+	int* cum_buck_ind = compute_cummulative_sum(bucket_ind, B);
+	print_int_arr(cum_buck_ind, B);
+	#pragma omp parallel
+	{
+	int thr = omp_get_thread_num();
+	int buck_start_ind = compute_buck_start_ind(thr);
+	int buck_end_ind = compute_buck_end_ind(thr);
+
+	int merge_start_ind = thr == 0 ? 0 : cum_buck_ind[buck_start_ind - 1]; //inclusive
+	int merge_end_ind = cum_buck_ind[buck_end_ind];  //exclusive
+
+	merge_buckets(arr, buckets, bucket_ind, buck_start_ind, merge_start_ind, merge_end_ind);
+	}
 	double t2 = omp_get_wtime();
- 	printf("%f,%lld\n", t2 - t1, size_of_arr);
+ 	
+	print_float_arr(arr, N);
+	print_is_sorted(arr, N);
+	printf("%f,%d\n", t2 - t1, size_of_arr);
 
 	free(arr);
 	free(bucket_ind);
