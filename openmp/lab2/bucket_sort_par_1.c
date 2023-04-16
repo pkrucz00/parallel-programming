@@ -15,6 +15,10 @@
 #define P 2
 #endif /*P*/
 
+#ifndef T
+#define T 1
+#endif /*T*/
+
 int* init_int_array(int n){
 	return (int*) malloc(n * sizeof(int));
 }
@@ -244,7 +248,7 @@ int main() {
 	double t_c_delta = avg(t_c_arr, P) - avg(t_b_arr, P);
 	double t_d_delta = t_end - avg(t_c_arr, P); 
 	double t_all = t_end - t_start;
-	printf("%d,%d,%d,%f,%f,%f,%f,%f, %s\n", N, B, P, t_a_delta, t_b_delta, t_c_delta, t_d_delta, t_all, print_is_sorted(sorted));
+	printf("%d,%d,%d,%d,%f,%f,%f,%f,%f,%s\n", N, B, P, T, t_a_delta, t_b_delta, t_c_delta, t_d_delta, t_all, print_is_sorted(sorted));
 
 	free(arr);
 	free(bucket_ind);
