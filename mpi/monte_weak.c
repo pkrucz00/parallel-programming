@@ -41,7 +41,7 @@ long long draw_points_in_circle(long long n) {
    return sum;
 }
 
-float approx_pi(long long sum, int processes_num){
+float approx_pi(long long sum, long long processes_num){
   double proportion = (double) sum / (double) (N*processes_num);
   return 4*proportion;
 }

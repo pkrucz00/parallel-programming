@@ -1,8 +1,15 @@
-#!/bin/bash
+#!/bin/bash -l
+#SBATCH --nodes 1
+#SBATCH --ntasks 12
+#SBATCH --time=04:00:00
+#SBATCH --partition=plgrid
+#SBATCH --account=plgmpr23-cpu 
+
+module add .plgrid plgrid/tools/openmpi
 
 function mpi_run() {
     mpicc -o "$1.o" "$1.c" -lm "$3" "$4" 
-    mpiexec -machinefile ./allnodes -np "$2" "./$1.o"
+    mpiexec -np "$2" "./$1.o"
     rm "$1.o"
 }
 
