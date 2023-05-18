@@ -1,0 +1,2 @@
+['word_count_whole_file.py', 'example.txt']
+dupa
