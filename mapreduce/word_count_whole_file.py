@@ -2,8 +2,10 @@
 """word_count_whole_file.py"""
 
 import sys
+import time
 
 if __name__=="__main__":
+    t1 = time.time()
     if len(sys.argv) != 2:
         raise Exception("Wrong number of arguments")
     
@@ -22,3 +24,5 @@ if __name__=="__main__":
     for word, count in word_count.items():
         print(f"{word}\t{count}")
     
+    time_elapsed = time.time() - t1
+    print(f"Time elapsed: {time_elapsed} [s]")
